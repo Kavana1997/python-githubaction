@@ -35,6 +35,9 @@ jobs:
       - name: Update kubeconfig
         run: aws eks update-kubeconfig --name EKS-python-githubaction --region ${{ secrets.AWS_REGION }}
      
+      - name: Verify kubectl access
+        run: kubectl get nodes
+     
       - name: Deploy to EKS
         run: |
           kubectl apply -f k8s/deployment.yaml
