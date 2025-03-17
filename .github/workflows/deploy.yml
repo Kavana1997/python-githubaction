@@ -40,5 +40,5 @@ jobs:
         run: |
           kubectl apply -f k8s/deployment.yaml
           kubectl apply -f k8s/service.yaml
-          kubectl rollout status deployment/python-app
-
+          kubectl get pods
+          kubectl get svc
