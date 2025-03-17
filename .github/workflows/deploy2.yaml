@@ -52,52 +52,7 @@ jobs:
       env:
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        # Create deployment YAML with imagePullSecrets
-        cat <<EOF > deployment.yaml
-        apiVersion: apps/v1
-        kind: Deployment
-        metadata:
-          name: ${{ env.APP_NAME }}
-          namespace: ${{ env.NAMESPACE }}
-        spec:
-          replicas: 2
-          selector:
-            matchLabels:
-              app: ${{ env.APP_NAME }}
-          template:
-            metadata:
-              labels:
-                app: ${{ env.APP_NAME }}
-            spec:
-              imagePullSecrets:
-              - name: ecr-secret
-              containers:
-              - name: ${{ env.APP_NAME }}
-                image: ${{ env.ECR_REPOSITORY }}/${{ env.APP_NAME }}:${{ env.IMAGE_TAG }}
-                ports:
-                - containerPort: 80
-        EOF
-        # Apply the deployment
         kubectl apply -f deployment.yaml
-        # Wait for deployment to complete
-        kubectl rollout status deployment/${{ env.APP_NAME }} -n ${{ env.NAMESPACE }}
-    # Optional: Create a service for the application
-    - name: Create Service
-      run: |
-        cat <<EOF > service.yaml
-        apiVersion: v1
-        kind: Service
-        metadata:
-          name: ${{ env.APP_NAME }}
-          namespace: ${{ env.NAMESPACE }}
-        spec:
-          selector:
-            app: ${{ env.APP_NAME }}
-          ports:
-          - port: 80
-            targetPort: 80
-          type: ClusterIP
-        EOF
         kubectl apply -f service.yaml
 
 
