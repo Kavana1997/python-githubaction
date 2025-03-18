@@ -88,6 +88,15 @@ jobs:
         kubectl apply -f k8s/service.yaml
         kubectl get pods
         kubectl get svc
+
+    - name: Wait for external IP
+      run: |
+          echo "Waiting for external IP..."
+          while [ -z $(kubectl get service python-app-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}') ]; do
+            sleep 10
+            echo "Still waiting..."
+          done
+          echo "External IP created: $(kubectl get service python-app-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
        
        
         
