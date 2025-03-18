@@ -3,16 +3,12 @@ kind: Service
 metadata:
   name: python-app-service
   annotations:
-      service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
-      service.beta.kubernetes.io/aws-load-balancer-type: "classic"
-      service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: "60"
-      service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
-
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb" # Use "nlb" for Network Load Balancer or "elb" for Classic Load Balancer
 spec:
   selector:
     app: python-app
+  type: LoadBalancer
   ports:
     - protocol: TCP
-      port: 80
-      targetPort: 5000
-  type: LoadBalancer
+      port: 80   # External Port
+      targetPort: 8080  # Port of the application
