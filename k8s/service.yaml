@@ -5,6 +5,8 @@ metadata:
   annotations:
       service.beta.kubernetes.io/aws-load-balancer-type: "classic"
       service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: "60"
+      service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+
 spec:
   selector:
     app: python-app
