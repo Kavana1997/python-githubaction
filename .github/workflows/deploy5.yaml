@@ -23,7 +23,7 @@ jobs:
       uses: aws-actions/configure-aws-credentials@v2
       with:
         role-to-assume: arn:aws:iam::651706752271:role/github-action-eks-elb-role
-        aws-region: us-east-1
+        aws-region: ap-south-1
 
     - name: Install kubectl
       uses: azure/setup-kubectl@v3
@@ -31,7 +31,7 @@ jobs:
         version: 'latest'
 
     - name: Update kubeconfig
-      run: aws eks update-kubeconfig --name cluster5 --region us-east-1
+      run: aws eks update-kubeconfig --name my-eks-cluster --region ap-south-1
 
     - name: Deploy application
       run: |
