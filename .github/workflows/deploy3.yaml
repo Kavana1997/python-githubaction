@@ -81,7 +81,13 @@ jobs:
           --region ap-south-1
         
     - name: Deploy to EKS
+      env:
+        IMAGE_TAG: ${{ github.sha }}
       run: |
+        kubectl apply -f k8s/deployment.yaml
+        kubectl apply -f k8s/service.yaml
+        kubectl get pods
+        kubectl get svc
        
        
         
