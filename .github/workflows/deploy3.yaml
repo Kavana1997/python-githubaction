@@ -41,7 +41,7 @@ jobs:
         # Create OIDC provider if it doesn't exist
         if ! aws iam list-open-id-connect-providers | grep -q $(aws eks describe-cluster --name my-eks-cluster --query "cluster.identity.oidc.issuer" --output text | sed -e "s/^https:\/\///"); then
           echo "Setting up OIDC provider for EKS cluster"
-          eksctl utils associate-iam-oidc-provider --cluster my-eks-cluster --region ap-south-1 --approve
+          kubectl utils associate-iam-oidc-provider --cluster my-eks-cluster --region ap-south-1 --approve
         fi
         
         # Create IAM policy for load balancer if it doesn't exist
