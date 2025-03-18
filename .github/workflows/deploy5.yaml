@@ -1,0 +1,60 @@
+name: Deploy to EKS and Configure ALB
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: arn:aws:iam::651706752271:role/github-action-eks-elb-role
+        aws-region: us-east-1
+
+    - name: Install kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+
+    - name: Update kubeconfig
+      run: aws eks update-kubeconfig --name cluster5 --region us-east-1
+
+    - name: Deploy application
+      run: |
+        kubectl apply -f kubernetes/deployment.yaml
+        kubectl apply -f kubernetes/service.yaml
+
+    - name: Wait for service to get external IP
+      run: |
+        echo "Waiting for LoadBalancer to be ready..."
+        kubectl get svc python-app-lb -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' --watch | grep -m 1 "elb.amazonaws.com"
+
+    - name: Get Load Balancer details
+      run: |
+        LB_HOSTNAME=$(kubectl get svc python-app-lb -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+        echo "Load Balancer Hostname: $LB_HOSTNAME"
+        
+        # Get ALB ARN from hostname
+        LB_NAME=$(echo $LB_HOSTNAME | cut -d'-' -f1)
+        aws elbv2 describe-load-balancers --names $LB_NAME
+
+    - name: Verify application is accessible
+      run: |
+        LB_HOSTNAME=$(kubectl get svc python-app-lb -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+        echo "Waiting for Load Balancer to become available..."
+        timeout 300 bash -c 'until curl -s -f -o /dev/null http://$0; do echo "Waiting for endpoint to become available..."; sleep 10; done' $LB_HOSTNAME
+        echo "Application is accessible at http://$LB_HOSTNAME"
