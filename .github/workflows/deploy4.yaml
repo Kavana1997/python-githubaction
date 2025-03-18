@@ -1,0 +1,162 @@
+name: Deploy Python App to EKS with Load Balancer
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ap-south-1
+        
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+      
+    - name: Build and push Docker image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: python-app
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        
+    - name: Update kube config
+      run: |
+        aws eks update-kubeconfig --name my-eks-cluster --region ap-south-1
+        
+    - name: Setup IRSA for Load Balancer
+      run: |
+        # Create OIDC provider if it doesn't exist
+        if ! aws iam list-open-id-connect-providers | grep -q $(aws eks describe-cluster --name my-eks-cluster --query "cluster.identity.oidc.issuer" --output text | sed -e "s/^https:\/\///"); then
+          echo "Setting up OIDC provider for EKS cluster"
+          eksctl utils associate-iam-oidc-provider --cluster my-eks-cluster --region ap-south-1 --approve
+        fi
+        
+        # Create IAM policy for load balancer if it doesn't exist
+        if ! aws iam get-policy --policy-arn arn:aws:iam::651706752271:policy/eks-lb-policy 2>/dev/null; then
+          echo "Creating IAM policy for load balancer"
+          aws iam create-policy \
+            --policy-name eks-lb-policy \
+            --policy-document '{
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "elasticloadbalancing:*",
+                    "ec2:CreateSecurityGroup",
+                    "ec2:DescribeSecurityGroups",
+                    "ec2:DescribeSubnets",
+                    "ec2:DescribeVpcs",
+                    "ec2:AuthorizeSecurityGroupIngress",
+                    "ec2:CreateTags",
+                    "ec2:ModifyInstanceAttribute"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }'
+        fi
+        
+        # Create IAM role and service account
+        eksctl create iamserviceaccount \
+          --cluster my-eks-cluster \
+          --namespace default \
+          --name lb-service-account \
+          --attach-policy-arn arn:aws:iam::651706752271:policy/eks-lb-policy \
+          --override-existing-serviceaccounts \
+          --approve \
+          --region ap-south-1
+        
+    - name: Deploy to EKS
+      run: |
+        # Apply deployment with service account
+        kubectl apply -f - <<EOF
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: python-app
+        spec:
+          replicas: 2
+          selector:
+            matchLabels:
+              app: python-app
+          template:
+            metadata:
+              labels:
+                app: python-app
+            spec:
+              serviceAccountName: lb-service-account
+              containers:
+              - name: python-app
+                image: ${{ steps.login-ecr.outputs.registry }}/python-app:${{ github.sha }}
+                ports:
+                - containerPort: 5000
+                resources:
+                  limits:
+                    cpu: "0.5"
+                    memory: "512Mi"
+                  requests:
+                    cpu: "0.2"
+                    memory: "256Mi"
+        EOF
+        
+        # Apply service with Classic Load Balancer
+        kubectl apply -f - <<EOF
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: python-app-service
+          annotations:
+            service.beta.kubernetes.io/aws-load-balancer-type: "classic"
+            service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: "60"
+        spec:
+          type: LoadBalancer
+          ports:
+          - port: 80
+            targetPort: 5000
+          selector:
+            app: python-app
+        EOF
+        
+    - name: Wait for Load Balancer
+      run: |
+        echo "Waiting for Load Balancer to be provisioned..."
+        
+        # Loop until we get the LB DNS or timeout
+        timeout=180
+        start_time=$(date +%s)
+        
+        while true; do
+          lb_hostname=$(kubectl get svc python-app-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null)
+          
+          if [ -n "$lb_hostname" ]; then
+            echo "Load Balancer is ready: $lb_hostname"
+            echo "LB_DNS=$lb_hostname" >> $GITHUB_ENV
+            break
+          fi
+          
+          current_time=$(date +%s)
+          elapsed=$((current_time - start_time))
+          
+          if [ $elapsed -gt $timeout ]; then
+            echo "Timed out waiting for Load Balancer"
+            kubectl get svc python-app-service -o yaml
+            exit 1
+          fi
+          
+          echo "Still waiting for Load Balancer... ($elapsed seconds elapsed)"
+          sleep 10
+        done
