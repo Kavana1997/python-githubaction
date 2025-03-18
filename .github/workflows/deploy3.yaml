@@ -82,54 +82,8 @@ jobs:
         
     - name: Deploy to EKS
       run: |
-        # Apply deployment with service account
-        kubectl apply -f - <<EOF
-        apiVersion: apps/v1
-        kind: Deployment
-        metadata:
-          name: python-app
-        spec:
-          replicas: 2
-          selector:
-            matchLabels:
-              app: python-app
-          template:
-            metadata:
-              labels:
-                app: python-app
-            spec:
-              serviceAccountName: lb-service-account
-              containers:
-              - name: python-app
-                image: ${{ steps.login-ecr.outputs.registry }}/python-app:${{ github.sha }}
-                ports:
-                - containerPort: 5000
-                resources:
-                  limits:
-                    cpu: "0.5"
-                    memory: "512Mi"
-                  requests:
-                    cpu: "0.2"
-                    memory: "256Mi"
-        EOF
-        
-        # Apply service with Classic Load Balancer
-        kubectl apply -f - <<EOF
-        apiVersion: v1
-        kind: Service
-        metadata:
-          name: python-app-service
-          annotations:
-            service.beta.kubernetes.io/aws-load-balancer-type: "classic"
-            service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: "60"
-        spec:
-          type: LoadBalancer
-          ports:
-          - port: 80
-            targetPort: 5000
-          selector:
-            app: python-app
-        EOF
+       
+       
         
     - name: Wait for Load Balancer
       run: |
