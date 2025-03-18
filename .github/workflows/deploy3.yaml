@@ -35,13 +35,19 @@ jobs:
     - name: Update kube config
       run: |
         aws eks update-kubeconfig --name my-eks-cluster --region ap-south-1
+  
+    - name: Install eksctl
+      run: |
+       curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+       sudo mv /tmp/eksctl /usr/local/bin
+       eksctl version
         
     - name: Setup IRSA for Load Balancer
       run: |
         # Create OIDC provider if it doesn't exist
         if ! aws iam list-open-id-connect-providers | grep -q $(aws eks describe-cluster --name my-eks-cluster --query "cluster.identity.oidc.issuer" --output text | sed -e "s/^https:\/\///"); then
           echo "Setting up OIDC provider for EKS cluster"
-          kubectl utils associate-iam-oidc-provider --cluster my-eks-cluster --region ap-south-1 --approve
+          eksctl utils associate-iam-oidc-provider --cluster my-eks-cluster --region ap-south-1 --approve
         fi
         
         # Create IAM policy for load balancer if it doesn't exist
