@@ -7,7 +7,7 @@ metadata:
 spec:
   selector:
     app: python-app
-  type: LoadBalancer
+  type: ClusterIP
   ports:
     - protocol: TCP
       port: 80   # External Port
