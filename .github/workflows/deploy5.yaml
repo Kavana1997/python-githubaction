@@ -35,8 +35,8 @@ jobs:
 
     - name: Deploy application
       run: |
-        kubectl apply -f kubernetes/deployment.yaml
-        kubectl apply -f kubernetes/service.yaml
+        kubectl apply -f k8s/deployment.yaml
+        kubectl apply -f k8s/service.yaml
 
     - name: Wait for service to get external IP
       run: |
