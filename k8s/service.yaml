@@ -13,4 +13,4 @@ spec:
   ports:
     - protocol: TCP
       port: 80   # External Port
-      targetPort: 8080  # Port of the application
+      targetPort: 5000  # Port of the application
