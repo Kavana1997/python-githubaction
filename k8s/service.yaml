@@ -3,7 +3,9 @@ kind: Service
 metadata:
   name: python-app-service
   annotations:
-    service.beta.kubernetes.io/aws-load-balancer-type: "nlb" # Use "nlb" for Network Load Balancer or "elb" for Classic Load Balancer
+    service.beta.kubernetes.io/aws-load-balancer-internal: "true" # Use "nlb" for Network Load Balancer or "elb" for Classic Load Balancer
+  lables:
+    app: python-app
 spec:
   selector:
     app: python-app
