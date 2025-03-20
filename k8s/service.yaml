@@ -16,7 +16,7 @@ metadata:
     # Add additional resource tags to the load balancer
     service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags: "Environment=Production,Project=PythonApp"
 spec:
-  type: LoadBalancer
+  type: NodePort
   ports:
   - port: 80           # Port exposed by the load balancer
     targetPort: 5000   # Port your Python app listens on in the container
