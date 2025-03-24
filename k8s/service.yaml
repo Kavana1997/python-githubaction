@@ -1,25 +1,21 @@
-apiVersion: v1
-kind: Service
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: python-app-service
-  annotations:
-    # Force the use of NLB instead of classic ELB
-    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
-    # Specify whether it's internet-facing (false) or internal (true)
-    service.beta.kubernetes.io/aws-load-balancer-internal: "false"
-    # Specify which subnets to use (optional, uses tagged subnets by default)
-    # service.beta.kubernetes.io/aws-load-balancer-subnets: subnet-097331e27c77fb803,subnet-0ed5cf41bff1d5859
-    # Specify security groups (optional)
-    # service.beta.kubernetes.io/aws-load-balancer-security-groups: sg-xxxx
-    # Enable cross-zone load balancing
-    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
-    # Add additional resource tags to the load balancer
-    service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags: "Environment=Production,Project=PythonApp"
+  name: python-app
 spec:
-  type: NodePort
-  ports:
-  - port: 80           # Port exposed by the load balancer
-    targetPort: 5000   # Port your Python app listens on in the container
-    protocol: TCP
+  replicas: 2
   selector:
-    app: python-app    # Must match the label of your deployment/pods
+    matchLabels:
+      app: python-app
+  template:
+    metadata:
+      labels:
+        app: python-app
+    spec:
+      containers:
+        - name: python-app
+          image: 651706752271.dkr.ecr.ap-south-1.amazonaws.com/my-python-app:latest
+          ports:
+            - containerPort: 5000
+      imagePullSecrets:
+      - name: ecr-secret
