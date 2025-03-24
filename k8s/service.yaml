@@ -1,21 +1,11 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: v1
+kind: Service
 metadata:
   name: python-app
 spec:
-  replicas: 2
   selector:
-    matchLabels:
-      app: python-app
-  template:
-    metadata:
-      labels:
-        app: python-app
-    spec:
-      containers:
-        - name: python-app
-          image: 651706752271.dkr.ecr.ap-south-1.amazonaws.com/my-python-app:latest
-          ports:
-            - containerPort: 5000
-      imagePullSecrets:
-      - name: ecr-secret
+    app: python-app
+  ports:
+    - port: 80
+      targetPort: 5000
+  type: LoadBalancer
