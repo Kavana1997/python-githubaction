@@ -12,10 +12,10 @@ spec:
       labels:
         app: python-app
     spec:
-      serviceAccountName: lb-service-account
       containers:
         - name: python-app
-          image: 651706752271.dkr.ecr.ap-south-1.amazonaws.com/python-app:latest
+          image: 651706752271.dkr.ecr.ap-south-1.amazonaws.com/my-python-app:latest
           ports:
             - containerPort: 5000
-
+      imagePullSecrets:
+      - name: ecr-secret
